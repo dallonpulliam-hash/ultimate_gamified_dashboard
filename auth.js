@@ -15,6 +15,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   const tabs = gate.querySelector(".auth-tabs");
   const footnote = gate.querySelector(".auth-footnote");
   const demoButton = document.getElementById("demo-mode-btn");
+  const DEMO_MODE_KEY = "questline-demo-mode";
   const configured = SUPABASE_URL !== "YOUR_SUPABASE_URL" &&
     SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY";
   const client = configured && window.supabase?.createClient
@@ -24,7 +25,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     : null;
 
   let session = null;
-  let demoMode = false;
+  let demoMode = localStorage.getItem(DEMO_MODE_KEY) === "true";
   let resolveReady;
   const ready = new Promise(resolve => { resolveReady = resolve; });
 
@@ -85,7 +86,10 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   function publishSession(nextSession, eventName) {
     const previousId = session?.user?.id || null;
     session = nextSession;
-    if (session?.user) demoMode = false;
+    if (session?.user) {
+      demoMode = false;
+      localStorage.removeItem(DEMO_MODE_KEY);
+    }
     if (session?.user) {
       if (previousId !== session.user.id) showLoading();
     } else showGate();
@@ -94,8 +98,24 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
       window.setTimeout(() => window.dispatchEvent(new CustomEvent("questline:auth", { detail })), 0);
     }
   }
+  function startDemo() {
+    if (session?.user) return null;
+    demoMode = true;
+    localStorage.setItem(DEMO_MODE_KEY, "true");
+    gate.hidden = true;
+    const user = { id: "local-demo", email: "demo@local.invalid", isDemo: true };
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent("questline:auth", {
+      detail: { user, event: "DEMO_STARTED" }
+    })), 0);
+    return user;
+  }
   async function initialize() {
     if (!client) {
+      if (demoMode) {
+        const user = startDemo();
+        resolveReady({ client: null, session: null, user });
+        return;
+      }
       showGate();
       setMessage(
         configured
@@ -118,21 +138,18 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
       return;
     }
     publishSession(data.session, "INITIAL_SESSION");
+    if (!data.session && demoMode) {
+      const user = startDemo();
+      resolveReady({ client, session: null, user });
+      return;
+    }
     resolveReady({ client, session, user: session?.user || null });
   }
 
   signinTab.addEventListener("click", () => setTab("signin"));
   signupTab.addEventListener("click", () => setTab("signup"));
   demoButton.addEventListener("click", () => {
-    if (session?.user) return;
-    demoMode = true;
-    gate.hidden = true;
-    window.dispatchEvent(new CustomEvent("questline:auth", {
-      detail: {
-        user: { id: "local-demo", email: "demo@local.invalid", isDemo: true },
-        event: "DEMO_STARTED"
-      }
-    }));
+    startDemo();
   });
 
   resendButton.addEventListener("click", async () => {
@@ -237,6 +254,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     exitDemo() {
       if (!demoMode) return;
       demoMode = false;
+      localStorage.removeItem(DEMO_MODE_KEY);
       showGate();
       window.dispatchEvent(new CustomEvent("questline:auth", {
         detail: { user: null, event: "DEMO_ENDED" }
@@ -291,6 +309,115 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
         activity: metadata.activity || { completions: [], focus: [] },
         settings: metadata.settings || {}
       };
+    },
+    async loadFitnessState(userId) {
+      const { data: profile, error: profileError } = await client
+        .from("profiles")
+        .select("level, xp, metadata")
+        .eq("id", userId)
+        .maybeSingle();
+      if (profileError) throw profileError;
+      const [{ data: workouts, error: workoutError }, { data: streak, error: streakError }] = await Promise.all([
+        client.from("workouts")
+          .select("id, date, routine_name, duration_mins, total_volume_lbs, energy_spent, exercises")
+          .eq("user_id", userId)
+          .order("date", { ascending: false }),
+        client.from("fitness_streaks")
+          .select("daily_hydration_ml, daily_protein_g, last_active_date, current_workout_streak, daily_reset_date, buff_claimed_date, last_saved_at, custom_routines, neon_theme_enabled")
+          .eq("user_id", userId)
+          .maybeSingle()
+      ]);
+      if (workoutError) throw workoutError;
+      if (streakError) throw streakError;
+      return {
+        level: profile?.level || 1,
+        xp: profile?.xp || 0,
+        totalXP: profile?.metadata?.profile?.totalXP || 0,
+        workouts: (workouts || []).map(workout => ({
+          id: workout.id,
+          date: workout.date,
+          routineName: workout.routine_name,
+          durationMins: workout.duration_mins,
+          totalVolumeLbs: workout.total_volume_lbs,
+          energySpent: workout.energy_spent,
+          exercises: workout.exercises || []
+        })),
+        streaks: streak ? {
+          dailyHydrationMl: streak.daily_hydration_ml,
+          dailyProteinG: streak.daily_protein_g,
+          lastActiveDate: streak.last_active_date,
+          currentWorkoutStreak: streak.current_workout_streak,
+          trackingDate: streak.daily_reset_date,
+          buffClaimedDate: streak.buff_claimed_date,
+          lastSavedAt: streak.last_saved_at,
+          customTemplates: streak.custom_routines || [],
+          neonThemeEnabled: streak.neon_theme_enabled
+        } : null
+      };
+    },
+    async syncFitnessState(userId, fitnessState) {
+      const { data: profile, error: profileReadError } = await client.from("profiles")
+        .select("metadata").eq("id", userId).maybeSingle();
+      if (profileReadError) throw profileReadError;
+      const metadata = profile?.metadata && typeof profile.metadata === "object" ? profile.metadata : {};
+      const profileMetadata = metadata.profile && typeof metadata.profile === "object" ? metadata.profile : {};
+      const { error: profileError } = await client.from("profiles").update({
+        level: fitnessState.level,
+        xp: fitnessState.xp,
+        active_tier: fitnessState.level >= 16 ? "master" : fitnessState.level >= 6 ? "adept" : "novice",
+        metadata: {
+          ...metadata,
+          profile: {
+            ...profileMetadata,
+            level: fitnessState.level,
+            xp: fitnessState.xp,
+            totalXP: fitnessState.totalXP
+          }
+        }
+      }).eq("id", userId);
+      if (profileError) throw profileError;
+
+      const workoutRows = fitnessState.workouts.map(workout => ({
+        id: workout.id,
+        user_id: userId,
+        date: workout.date,
+        routine_name: workout.routineName,
+        duration_mins: workout.durationMins,
+        total_volume_lbs: workout.totalVolumeLbs,
+        energy_spent: workout.energySpent,
+        exercises: workout.exercises
+      }));
+      if (workoutRows.length) {
+        const { error } = await client.from("workouts").upsert(workoutRows, { onConflict: "id" });
+        if (error) throw error;
+      }
+
+      const { data: existing, error: listError } = await client
+        .from("workouts").select("id").eq("user_id", userId);
+      if (listError) throw listError;
+      const retained = new Set(workoutRows.map(workout => workout.id));
+      for (const workout of existing || []) {
+        if (!retained.has(workout.id)) {
+          const { error } = await client.from("workouts")
+            .delete().eq("user_id", userId).eq("id", workout.id);
+          if (error) throw error;
+        }
+      }
+
+      const streak = fitnessState.streaks;
+      const { error: streakError } = await client.from("fitness_streaks").upsert({
+        user_id: userId,
+        daily_hydration_ml: streak.dailyHydrationMl,
+        daily_protein_g: streak.dailyProteinG,
+        last_active_date: streak.lastActiveDate || null,
+        current_workout_streak: streak.currentWorkoutStreak,
+        daily_reset_date: streak.trackingDate,
+        buff_claimed_date: streak.buffClaimedDate,
+        last_saved_at: streak.lastSavedAt,
+        custom_routines: fitnessState.streaks.customTemplates || [],
+        neon_theme_enabled: !!fitnessState.streaks.neonThemeEnabled
+      }, { onConflict: "user_id" });
+      if (streakError) throw streakError;
     },
     async syncState(userId, state) {
       const { error: profileError } = await client.from("profiles").upsert({

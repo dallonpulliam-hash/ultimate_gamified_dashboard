@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101522">
+  <title>Fitness Arena — Questline</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="auth.css">
+  <link rel="stylesheet" href="fitness-style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="storage.js" defer></script>
+  <script src="auth.js" defer></script>
+  <script src="fitness.js" defer></script>
+</head>
+<body data-theme="dark">
+  <section class="auth-gate" id="auth-gate" aria-labelledby="auth-title">
+    <div class="auth-card glass">
+      <a class="brand auth-brand" href="index.html"><span class="brand-mark">✦</span><span>questline<span class="brand-dot">.</span></span></a>
+      <div class="auth-heading"><p class="eyebrow">YOUR PROGRESS, EVERYWHERE</p><h1 id="auth-title">Welcome back.</h1><p>Sign in to enter the Fitness Arena.</p></div>
+      <div class="auth-tabs" role="tablist" aria-label="Account access">
+        <button type="button" class="auth-tab active" id="signin-tab" role="tab" aria-selected="true" aria-controls="signin-panel">Sign in</button>
+        <button type="button" class="auth-tab" id="signup-tab" role="tab" aria-selected="false" aria-controls="signup-panel">Create account</button>
+      </div>
+      <form class="auth-form" id="signin-panel" aria-labelledby="signin-tab">
+        <label>Email address<input type="email" id="signin-email" autocomplete="email" maxlength="254" required placeholder="you@example.com"></label>
+        <label>Password<input type="password" id="signin-password" autocomplete="current-password" minlength="8" required placeholder="At least 8 characters"></label>
+        <button class="primary-btn auth-submit" type="submit">Sign in <span>→</span></button>
+        <button class="auth-resend" id="resend-confirmation-btn" type="button">Resend confirmation email</button>
+      </form>
+      <form class="auth-form" id="signup-panel" aria-labelledby="signup-tab" hidden>
+        <label>Email address<input type="email" id="signup-email" autocomplete="email" maxlength="254" required placeholder="you@example.com"></label>
+        <label>Password<input type="password" id="signup-password" autocomplete="new-password" minlength="8" required placeholder="At least 8 characters"></label>
+        <label>Confirm password<input type="password" id="signup-confirm" autocomplete="new-password" minlength="8" required placeholder="Enter your password again"></label>
+        <button class="primary-btn auth-submit" type="submit">Create account <span>✦</span></button>
+      </form>
+      <div class="auth-demo-option"><p>Explore in demo mode. Workouts remain on this browser only.</p><button class="secondary-btn auth-demo-btn" id="demo-mode-btn" type="button">Continue in local demo</button></div>
+      <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
+      <p class="auth-footnote">Your workouts and progress sync securely across devices.</p>
+    </div>
+  </section>
+
+  <div class="fitness-shell" id="app-shell" hidden inert aria-hidden="true">
+    <header class="arena-topbar glass">
+      <a class="brand arena-brand" href="index.html"><span class="brand-mark">✦</span><span>questline<span class="brand-dot">.</span></span></a>
+      <nav class="arena-nav" aria-label="Arena navigation"><a href="index.html">Productivity dashboard</a><a class="active" href="fitness.html">Fitness arena</a></nav>
+      <div class="arena-user"><span class="tier-chip" id="fitness-tier">GYM RECRUIT</span><span id="fitness-level">LEVEL 1</span><button class="secondary-btn" id="gym-theme-toggle" type="button" hidden>Neon Pulse</button><button class="secondary-btn" id="fitness-exit" type="button">Sign out</button></div>
+    </header>
+
+    <main class="arena-main">
+      <section class="arena-heading">
+        <div><p class="eyebrow">QUESTLINE · TRAINING GROUNDS</p><h1>The Fitness <em>Arena.</em></h1><p>Build strength, fuel your recovery, and take down today's challenge.</p></div>
+        <div class="arena-xp glass"><span>PLAYER XP</span><strong id="fitness-xp-label">0 / 100 XP</strong><div class="arena-progress"><span id="fitness-xp-progress"></span></div></div>
+      </section>
+
+      <section class="arena-grid">
+        <article class="arena-panel workout-panel glass">
+          <div class="panel-heading"><div><p class="eyebrow">COMBAT LOADOUT</p><h2>Workout log</h2></div><span class="panel-icon">⚔</span></div>
+          <div class="workout-controls">
+            <label>Routine name<input id="routine-name" maxlength="50" value="Custom workout" placeholder="Name your workout"></label>
+            <label>Duration <span class="inline-input"><input id="duration-input" type="number" min="1" max="360" value="30"><span>min</span></span></label>
+            <label>Intensity<select id="energy-select"><option value="low">⚡ Low Recovery</option><option value="medium" selected>⚡⚡ Medium Split</option><option value="high">⚡⚡⚡ High-Intensity Blast</option></select></label>
+          </div>
+          <div class="template-row"><label for="template-select">Quick-start template</label><select id="template-select"><option value="">Choose a routine…</option><option value="Push">Push day</option><option value="Pull">Pull day</option><option value="Legs">Leg day</option><option value="Full Body">Full body</option><option value="custom">Custom macro…</option></select><span id="macro-lock" class="macro-lock" hidden>Custom macros unlock at level 16</span></div>
+          <div class="exercise-list-wrap"><div class="exercise-heading"><span>EXERCISE</span><span>MUSCLE</span><span>SETS</span><span>REPS</span><span>WEIGHT · LB</span><span></span></div>
+          <div id="exercise-list" class="exercise-list"></div>
+          </div>
+          <button class="add-exercise-btn" id="add-exercise" type="button">＋ Add exercise</button>
+          <div class="volume-summary"><div><span>TOTAL VOLUME</span><strong><b id="volume-value">0</b> <small>lb</small></strong></div><div><span>EST. DAMAGE</span><strong id="damage-value">0 <small>DMG</small></strong></div><div><span>XP REWARD</span><strong id="reward-value">25 <small>XP</small></strong></div></div>
+          <button class="primary-btn log-workout-btn" id="log-workout" type="button">⚔ Log workout & attack boss</button>
+        </article>
+
+        <div class="arena-side">
+          <article class="boss-card glass" id="boss-card">
+            <div class="boss-sky"><div class="boss-orbit"></div><div class="boss-art" aria-hidden="true">♜</div><span class="boss-badge">DAILY BOSS</span></div>
+            <div class="boss-copy"><div class="boss-title"><div><p class="eyebrow">TODAY'S COMBAT QUEST</p><h2 id="boss-name">The Iron Warden</h2></div><span class="boss-level">LV. 01</span></div><p>Every completed workout deals damage. Show up, strike true, and claim your XP.</p>
+              <div class="boss-health-label"><span>⚔ BOSS HP</span><strong><b id="boss-hp">500</b> / 500</strong></div><div class="boss-health"><span id="boss-health-fill"></span></div>
+              <div class="boss-footer"><span>Damage dealt today</span><strong id="boss-damage">0 DMG</strong></div>
+            </div>
+          </article>
+          <article class="energy-card glass"><div class="panel-heading"><div><p class="eyebrow">COGNITIVE ENERGY AUDIT</p><h2>Match your stamina</h2></div><span class="panel-icon">⚡</span></div><p id="energy-advice">Checking your active quests…</p><div class="energy-meter"><span id="energy-meter-fill"></span></div><small id="energy-detail">Uses unfinished task energy from your dashboard.</small></article>
+        </div>
+      </section>
+
+      <section class="resource-grid">
+        <article class="resource-card mana-card glass"><div class="resource-heading"><div><p class="eyebrow">MANA · HYDRATION</p><h2>Water reserve</h2></div><span>💧</span></div>
+          <div class="resource-body"><div class="water-vessel" id="water-vessel" role="button" tabindex="0" aria-label="Add 250 milliliters of water"><div class="water-fill" id="water-fill"><div class="water-wave"></div></div><span>💧</span></div><div class="resource-meta"><strong><b id="water-value">0</b> <small>ml</small></strong><span>Goal · 2,500 ml</span><div class="resource-meter"><span id="water-progress"></span></div><div class="quick-add"><button data-water="250" type="button">+250 ml</button><button data-water="500" type="button">+500 ml</button><button data-water="-250" type="button">−250</button></div><form class="custom-resource-form" id="water-form"><label for="water-custom">Custom water</label><input id="water-custom" type="number" min="1" max="5000" step="1" inputmode="numeric" placeholder="Amount in ml" required><button type="submit" aria-label="Add custom water amount">Add</button></form></div></div>
+        </article>
+        <article class="resource-card stamina-card glass"><div class="resource-heading"><div><p class="eyebrow">STAMINA · FUELING</p><h2>Protein reserve</h2></div><span>◈</span></div>
+          <div class="protein-total"><strong><b id="protein-value">0</b> <small>g</small></strong><span>Goal · 150 g</span></div><div class="protein-blocks" id="protein-blocks" role="img" aria-label="Protein goal progress"></div><div class="quick-add"><button data-protein="20" type="button">+20 g</button><button data-protein="40" type="button">+40 g</button><button data-protein="-20" type="button">−20 g</button></div><form class="custom-resource-form" id="protein-form"><label for="protein-custom">Custom protein</label><input id="protein-custom" type="number" min="1" max="300" step="1" inputmode="numeric" placeholder="Amount in grams" required><button type="submit">Add</button></form>
+        </article>
+        <article class="buff-card glass" id="buff-card"><div class="buff-icon">✧</div><div><p class="eyebrow">DAILY BUFF</p><h2 id="buff-title">Fuel your next level</h2><p id="buff-copy">Hit both daily resource goals to activate Well-Fed & Fully Hydrated: +20 bonus XP.</p></div><span class="buff-state" id="buff-state">INACTIVE</span></article>
+      </section>
+
+      <section class="arena-grid lower-grid">
+        <article class="arena-panel muscle-panel glass"><div class="panel-heading"><div><p class="eyebrow">TARGET SELECT</p><h2>Muscle map</h2></div><span class="tier-chip" id="muscle-tier">LOCKED · LV 6</span></div>
+          <p class="muscle-hint" id="muscle-hint">Unlocks at Iron Warrior (Level 6). Tap a muscle to filter your workout history.</p>
+          <div class="muscle-map" id="muscle-map" aria-disabled="true">
+            <svg viewBox="0 0 340 240" role="group" aria-label="Interactive muscle groups">
+              <g class="body-silhouette" aria-hidden="true"><circle cx="85" cy="32" r="18"/><path d="M64 54 Q85 47 106 54 L117 68 L110 119 L104 148 L112 218 L91 222 L85 158 L78 222 L57 218 L65 148 L59 119 L53 68 Z"/><path d="M59 65 L38 73 L24 126 L36 132 L55 98 M111 65 L132 73 L146 126 L134 132 L115 98"/></g>
+              <g class="body-silhouette back-silhouette" aria-hidden="true"><circle cx="255" cy="32" r="18"/><path d="M234 54 Q255 47 276 54 L287 68 L280 119 L274 148 L282 218 L261 222 L255 158 L248 222 L227 218 L235 148 L229 119 L223 68 Z"/><path d="M229 65 L208 73 L194 126 L206 132 L225 98 M281 65 L302 73 L316 126 L304 132 L285 98"/></g>
+              <g class="muscle-target" data-muscle="chest" role="button" tabindex="0" aria-label="Filter chest workouts"><path d="M64 77 Q85 64 106 77 L102 100 Q85 108 68 100Z"/></g>
+              <g class="muscle-target" data-muscle="shoulders" role="button" tabindex="0" aria-label="Filter shoulder workouts"><path d="M55 68 Q63 60 70 69 L66 84 L54 87Z M100 69 Q107 60 115 68 L116 87 L104 84Z"/></g>
+              <g class="muscle-target" data-muscle="arms" role="button" tabindex="0" aria-label="Filter arm workouts"><path d="M48 83 L38 119 L44 123 L57 94Z M122 83 L132 119 L126 123 L113 94Z"/></g>
+              <g class="muscle-target" data-muscle="core" role="button" tabindex="0" aria-label="Filter core workouts"><path d="M70 105 L100 105 L97 143 L73 143Z"/></g>
+              <g class="muscle-target" data-muscle="back" role="button" tabindex="0" aria-label="Filter back workouts"><path d="M235 75 Q255 66 275 75 L271 112 L255 125 L239 112Z"/></g>
+              <g class="muscle-target" data-muscle="glutes" role="button" tabindex="0" aria-label="Filter glute workouts"><path d="M236 120 Q255 112 274 120 L272 143 Q255 150 238 143Z"/></g>
+              <g class="muscle-target" data-muscle="legs" role="button" tabindex="0" aria-label="Filter leg workouts"><path d="M239 148 L253 151 L249 209 L233 210Z M258 151 L272 148 L278 210 L262 209Z"/></g>
+            </svg>
+          </div>
+          <button class="clear-muscle" id="clear-muscle" type="button" hidden>Clear muscle filter</button>
+        </article>
+        <article class="arena-panel history-panel glass"><div class="panel-heading"><div><p class="eyebrow">YOUR TRAINING RECORD</p><h2>Recent battles</h2></div><span class="panel-icon">▤</span></div><div id="workout-history" class="workout-history"></div><div id="history-empty" class="history-empty"><span>✧</span><h3>Begin Quest #1</h3><p>Your training record is waiting. Build a loadout and start a workout.</p><button class="primary-btn" id="start-workout">Start a workout</button></div></article>
+      </section>
+
+      <section class="arena-streak glass" id="streak-banner"><div><p class="eyebrow">TRAINING STREAK</p><h2><span id="streak-flame">♨</span> <b id="streak-count">0</b> day streak</h2><p id="streak-caption">Log a workout today to ignite your streak.</p></div><div class="streak-dots" id="streak-dots" aria-label="Workout consistency this week"></div></section>
+      <dialog class="modal" id="macro-dialog"><form class="modal-card small-modal" id="macro-form"><div class="modal-heading"><div><p class="eyebrow">TITAN LEGEND REWARD</p><h2>Save custom routine</h2></div><button class="icon-btn" id="macro-cancel-x" type="button" aria-label="Close">×</button></div><label>Routine name<input id="macro-name" maxlength="40" required placeholder="e.g. Strength circuit"></label><div class="modal-actions"><button class="secondary-btn" id="macro-cancel" type="button">Cancel</button><button class="primary-btn" type="submit">Save routine</button></div></form></dialog>
+      <footer class="arena-footer"><span>⚔ FITNESS ARENA</span><span id="fitness-sync-status">Local-first · ready</span><a href="index.html">← Back to productivity dashboard</a></footer>
+      <div class="fitness-toast-region" id="fitness-toasts" aria-live="polite"></div>
+    </main>
+  </div>
+</body>
+</html>
