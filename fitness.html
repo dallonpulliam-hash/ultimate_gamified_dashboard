@@ -58,17 +58,28 @@
       <section class="arena-grid">
         <article class="arena-panel workout-panel glass">
           <div class="panel-heading"><div><p class="eyebrow">COMBAT LOADOUT</p><h2>Workout log</h2></div><span class="panel-icon">⚔</span></div>
+          <div class="workout-mode" role="group" aria-label="Workout type">
+            <button class="workout-mode-btn active" type="button" data-workout-mode="strength" aria-pressed="true">🏋 Strength</button>
+            <button class="workout-mode-btn" type="button" data-workout-mode="cardio" aria-pressed="false">🏃 Cardio</button>
+          </div>
           <div class="workout-controls">
             <label>Routine name<input id="routine-name" maxlength="50" value="Custom workout" placeholder="Name your workout"></label>
             <label>Duration <span class="inline-input"><input id="duration-input" type="number" min="1" max="360" value="30"><span>min</span></span></label>
             <label>Intensity<select id="energy-select"><option value="low">⚡ Low Recovery</option><option value="medium" selected>⚡⚡ Medium Split</option><option value="high">⚡⚡⚡ High-Intensity Blast</option></select></label>
           </div>
-          <div class="template-row"><label for="template-select">Quick-start template</label><select id="template-select"><option value="">Choose a routine…</option><option value="Push">Push day</option><option value="Pull">Pull day</option><option value="Legs">Leg day</option><option value="Full Body">Full body</option><option value="custom">Custom macro…</option></select><span id="macro-lock" class="macro-lock" hidden>Custom macros unlock at level 16</span></div>
-          <div class="exercise-list-wrap"><div class="exercise-heading"><span>EXERCISE</span><span>MUSCLE</span><span>SETS</span><span>REPS</span><span>WEIGHT · LB</span><span></span></div>
-          <div id="exercise-list" class="exercise-list"></div>
+          <div id="strength-fields" class="workout-mode-fields">
+            <div class="template-row"><label for="template-select">Quick-start template</label><select id="template-select"><option value="">Choose a routine…</option><option value="Push">Push day</option><option value="Pull">Pull day</option><option value="Legs">Leg day</option><option value="Full Body">Full body</option><option value="custom">Custom macro…</option></select><span id="macro-lock" class="macro-lock" hidden>Custom macros unlock at level 16</span></div>
+            <div class="exercise-list-wrap"><div class="exercise-heading"><span>EXERCISE</span><span>MUSCLE</span><span>SETS</span><span>REPS</span><span>WEIGHT · LB</span><span></span></div>
+            <div id="exercise-list" class="exercise-list"></div>
+            </div>
+            <button class="add-exercise-btn" id="add-exercise" type="button">＋ Add exercise</button>
           </div>
-          <button class="add-exercise-btn" id="add-exercise" type="button">＋ Add exercise</button>
-          <div class="volume-summary"><div><span>TOTAL VOLUME</span><strong><b id="volume-value">0</b> <small>lb</small></strong></div><div><span>EST. DAMAGE</span><strong id="damage-value">0 <small>DMG</small></strong></div><div><span>XP REWARD</span><strong id="reward-value">25 <small>XP</small></strong></div></div>
+          <div id="cardio-fields" class="cardio-fields" hidden>
+            <label>Activity<select id="cardio-activity"><option>Running</option><option>Biking</option><option>Walking</option><option>Swimming</option><option>Rowing</option><option>Elliptical</option><option>Other cardio</option></select></label>
+            <label>Distance<input id="cardio-distance" type="number" min="0" max="1000" step="0.01" inputmode="decimal" placeholder="0.00"></label>
+            <label>Unit<select id="cardio-unit"><option value="km">Kilometers</option><option value="mi">Miles</option></select></label>
+          </div>
+          <div class="volume-summary"><div><span id="volume-label">TOTAL VOLUME</span><strong><b id="volume-value">0</b> <small id="volume-unit">lb</small></strong></div><div><span>EST. DAMAGE</span><strong id="damage-value">0 <small>DMG</small></strong></div><div><span>XP REWARD</span><strong id="reward-value">25 <small>XP</small></strong></div></div>
           <button class="primary-btn log-workout-btn" id="log-workout" type="button">⚔ Log workout & attack boss</button>
         </article>
 

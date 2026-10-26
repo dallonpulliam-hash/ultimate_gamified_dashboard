@@ -319,7 +319,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
       if (profileError) throw profileError;
       const [{ data: workouts, error: workoutError }, { data: streak, error: streakError }] = await Promise.all([
         client.from("workouts")
-          .select("id, date, routine_name, duration_mins, total_volume_lbs, energy_spent, exercises")
+          .select("id, date, routine_name, duration_mins, total_volume_lbs, energy_spent, exercises, activity_type, cardio_activity, distance, distance_unit")
           .eq("user_id", userId)
           .order("date", { ascending: false }),
         client.from("fitness_streaks")
@@ -340,7 +340,11 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
           durationMins: workout.duration_mins,
           totalVolumeLbs: workout.total_volume_lbs,
           energySpent: workout.energy_spent,
-          exercises: workout.exercises || []
+          exercises: workout.exercises || [],
+          activityType: workout.activity_type || "strength",
+          cardioActivity: workout.cardio_activity || "",
+          distance: workout.distance || 0,
+          distanceUnit: workout.distance_unit || "km"
         })),
         streaks: streak ? {
           dailyHydrationMl: streak.daily_hydration_ml,
@@ -385,7 +389,11 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
         duration_mins: workout.durationMins,
         total_volume_lbs: workout.totalVolumeLbs,
         energy_spent: workout.energySpent,
-        exercises: workout.exercises
+        exercises: workout.exercises,
+        activity_type: workout.activityType || "strength",
+        cardio_activity: workout.cardioActivity || null,
+        distance: workout.distance || 0,
+        distance_unit: workout.distanceUnit || "km"
       }));
       if (workoutRows.length) {
         const { error } = await client.from("workouts").upsert(workoutRows, { onConflict: "id" });

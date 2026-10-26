@@ -9,8 +9,17 @@ create table if not exists public.workouts (
   duration_mins integer not null default 0 check (duration_mins >= 0),
   total_volume_lbs integer not null default 0 check (total_volume_lbs >= 0),
   energy_spent text not null default 'medium',
-  exercises jsonb not null default '[]'::jsonb
+  exercises jsonb not null default '[]'::jsonb,
+  activity_type text not null default 'strength',
+  cardio_activity text,
+  distance numeric not null default 0 check (distance >= 0),
+  distance_unit text not null default 'km'
 );
+
+alter table public.workouts add column if not exists activity_type text not null default 'strength';
+alter table public.workouts add column if not exists cardio_activity text;
+alter table public.workouts add column if not exists distance numeric not null default 0;
+alter table public.workouts add column if not exists distance_unit text not null default 'km';
 
 create index if not exists workouts_user_date_idx on public.workouts (user_id, date desc);
 

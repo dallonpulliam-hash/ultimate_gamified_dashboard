@@ -34,6 +34,7 @@
   let demoMode = false;
   let coreTasks = [];
   let selectedMuscle = "";
+  let workoutMode = "strength";
   let syncTimer = 0;
   let syncPending = false;
   let syncInFlight = false;
@@ -68,7 +69,11 @@
       durationMins: Math.max(0, Number(w.durationMins) || 0),
       totalVolumeLbs: Math.max(0, Number(w.totalVolumeLbs) || 0),
       energySpent: ["low","medium","high"].includes(w.energySpent) ? w.energySpent : "medium",
-      exercises: Array.isArray(w.exercises) ? w.exercises : []
+      exercises: Array.isArray(w.exercises) ? w.exercises : [],
+      activityType: w.activityType === "cardio" ? "cardio" : "strength",
+      cardioActivity: String(w.cardioActivity || "Running"),
+      distance: Math.max(0, Number(w.distance) || 0),
+      distanceUnit: w.distanceUnit === "mi" ? "mi" : "km"
     }));
     fresh.streaks = { ...fresh.streaks, ...(data?.streaks || {}) };
     fresh.streaks.dailyHydrationMl = Math.max(0,Math.min(WATER_GOAL,Number(fresh.streaks.dailyHydrationMl)||0));
@@ -153,10 +158,15 @@
   }
   function updateWorkoutEstimate() {
     if (!state) return;
-    const exercises = getExerciseRows();
+    const isCardio = workoutMode === "cardio";
+    const exercises = isCardio ? [] : getExerciseRows();
     const volume = workoutVolume(exercises);
     const duration = Math.max(1, Number($("#duration-input").value) || 1);
-    $("#volume-value").textContent = Math.round(volume).toLocaleString();
+    $("#volume-label").textContent = isCardio ? "DISTANCE" : "TOTAL VOLUME";
+    $("#volume-unit").textContent = isCardio ? $("#cardio-unit").value : "lb";
+    $("#volume-value").textContent = isCardio
+      ? (Number($("#cardio-distance").value) || 0).toLocaleString(undefined,{maximumFractionDigits:2})
+      : Math.round(volume).toLocaleString();
     $("#damage-value").innerHTML = `${bossDamage(volume,duration)} <small>DMG</small>`;
     $("#reward-value").innerHTML = `${Math.round(earnedXpForWorkout(volume,duration)*workoutXpMultiplier())} <small>XP</small>`;
   }
@@ -237,8 +247,15 @@
     $("#history-empty").hidden = filtered.length > 0;
     $("#workout-history").innerHTML = filtered.slice(0,6).map(workout=>{
       const date = new Date(workout.date).toLocaleDateString(undefined,{month:"short",day:"numeric"});
-      const exercises = workout.exercises.map(e=>e.name).join(", ");
-      return `<article class="history-item"><span class="history-icon">⚔</span><div><strong>${safeText(workout.routineName)}</strong><small>${safeText(date)} · ${workout.durationMins} min · ${safeText(exercises)}</small></div><span class="history-xp">${workout.totalVolumeLbs.toLocaleString()} lb</span></article>`;
+      const isCardio = workout.activityType === "cardio";
+      const details = isCardio
+        ? `${workout.distance.toLocaleString(undefined,{maximumFractionDigits:2})} ${workout.distanceUnit} · ${safeText(workout.cardioActivity)}`
+        : workout.exercises.map(e=>e.name).join(", ");
+      const measure = isCardio
+        ? `${workout.distance.toLocaleString(undefined,{maximumFractionDigits:2})} ${workout.distanceUnit}`
+        : `${workout.totalVolumeLbs.toLocaleString()} lb`;
+      const icon=isCardio?(workout.cardioActivity==="Biking"?"🚴":workout.cardioActivity==="Swimming"?"🏊":"🏃"):"⚔";
+      return `<article class="history-item"><span class="history-icon">${icon}</span><div><strong>${safeText(workout.routineName)}</strong><small>${safeText(date)} · ${workout.durationMins} min · ${safeText(details)}</small></div><span class="history-xp">${measure}</span></article>`;
     }).join("");
   }
   function renderStreakDays() {
@@ -363,16 +380,23 @@
     streaks.lastActiveDate = today;
   }
   function logWorkout() {
-    const rows = getExerciseRows().map(exerciseFromRow);
+    const isCardio = workoutMode === "cardio";
+    const rows = isCardio ? [] : getExerciseRows().map(exerciseFromRow);
     const name = $("#routine-name").value.trim();
     const duration = Math.min(360,Math.max(1,Number($("#duration-input").value)||0));
+    const distance = Number($("#cardio-distance").value);
     if (!name) {
       $("#routine-name").focus();
       notify("Give this workout a routine name first.");
       return;
     }
-    if (!rows.length) {
+    if (!isCardio && !rows.length) {
       notify("Add at least one exercise before logging your workout.");
+      return;
+    }
+    if (isCardio && (!Number.isFinite(distance) || distance <= 0 || distance > 1000)) {
+      $("#cardio-distance").focus();
+      notify("Enter a cardio distance greater than 0 and no more than 1,000.");
       return;
     }
     if (rows.some(exercise=>exercise.sets.some(set=>set.reps < 0 || set.weightLbs < 0))) {
@@ -388,15 +412,19 @@
       durationMins:duration,
       totalVolumeLbs:Math.round(volume),
       energySpent:$("#energy-select").value,
-      exercises:rows
+      exercises:rows,
+      activityType:isCardio?"cardio":"strength",
+      cardioActivity:isCardio?$("#cardio-activity").value:"",
+      distance:isCardio?distance:0,
+      distanceUnit:isCardio?$("#cardio-unit").value:"km"
     };
     state.workouts.unshift(workout);
     updateStreak();
     awardXP(xp);
     persist();
     renderAll();
-    notify(`Workout logged — <strong>${bossDamage(volume,duration)} damage</strong> and <strong>+${xp} XP</strong>.`);
-    $("#routine-name").value="Custom workout";
+    notify(`${isCardio?"Cardio session":"Workout"} logged — <strong>${bossDamage(volume,duration)} damage</strong> and <strong>+${xp} XP</strong>.`);
+    $("#routine-name").value=isCardio?`${workout.cardioActivity} session`:"Custom workout";
   }
   function adjustResource(type, amount) {
     const field = type === "water" ? "dailyHydrationMl" : "dailyProteinG";
@@ -454,6 +482,26 @@
     renderHistory();
   }
   function bindEvents() {
+    $$("[data-workout-mode]").forEach(button=>button.addEventListener("click",()=>{
+      const previousMode=workoutMode;
+      workoutMode=button.dataset.workoutMode;
+      const isCardio=workoutMode==="cardio";
+      const routineName=$("#routine-name");
+      if(isCardio&&routineName.value==="Custom workout") {
+        routineName.value=`${$("#cardio-activity").value} session`;
+      } else if(!isCardio&&previousMode==="cardio"&&routineName.value===`${$("#cardio-activity").value} session`) {
+        routineName.value="Custom workout";
+      }
+      $$("[data-workout-mode]").forEach(modeButton=>{
+        const active=modeButton===button;
+        modeButton.classList.toggle("active",active);
+        modeButton.setAttribute("aria-pressed",String(active));
+      });
+      $("#strength-fields").hidden=isCardio;
+      $("#cardio-fields").hidden=!isCardio;
+      $("#log-workout").textContent=isCardio?"🏃 Log cardio session":"⚔ Log workout & attack boss";
+      updateWorkoutEstimate();
+    }));
     $("#exercise-list").addEventListener("click",event=>{
       const step=event.target.closest("[data-step]");
       if(step) {
@@ -472,6 +520,15 @@
     $("#exercise-list").addEventListener("input",updateWorkoutEstimate);
     $("#exercise-list").addEventListener("change",updateWorkoutEstimate);
     $("#duration-input").addEventListener("input",updateWorkoutEstimate);
+    $("#cardio-distance").addEventListener("input",updateWorkoutEstimate);
+    $("#cardio-unit").addEventListener("change",updateWorkoutEstimate);
+    $("#cardio-activity").addEventListener("change",event=>{
+      const previousName=`${event.target.dataset.previousValue || "Running"} session`;
+      if(workoutMode==="cardio"&&($("#routine-name").value===previousName||$("#routine-name").value==="Custom workout")) {
+        $("#routine-name").value=`${event.target.value} session`;
+      }
+      event.target.dataset.previousValue=event.target.value;
+    });
     $("#add-exercise").addEventListener("click",()=>{
       const current = getExerciseRows().map(ex=>({
         name:ex.name,
