@@ -1,7 +1,7 @@
 /* First run supabase-setup.sql, then replace both placeholders with the Project URL
    and publishable anon key from Project Settings > API. Never use service_role here. */
-const SUPABASE_URL = "YOUR_SUPABASE_URL";
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+const SUPABASE_URL = "https://jmvfwlbxcbkwkgfiqxfc.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptdmZ3bGJ4Y2Jrd2tnZmlxeGZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI5NzM2OTEsImV4cCI6MjEwODU0OTY5MX0._s51KOgsDwsGOpnxxIlBqu8-u-7rEgSXuFpiA2NIfKo";
 
 (() => {
   "use strict";
