@@ -3,7 +3,19 @@
   "use strict";
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-  const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const uid = () => {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    if (crypto.getRandomValues) {
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      return [...bytes].map((byte,index)=>`${[4,6,8,10].includes(index)?"-":""}${byte.toString(16).padStart(2,"0")}`).join("");
+    }
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,char=>{
+      const random=Math.random()*16|0;
+      return (char==="x"?random:(random&3|8)).toString(16);
+    });
+  };
   const todayISO = () => new Date().toISOString().slice(0, 10);
   const localDate = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
   const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char]));
@@ -56,19 +68,78 @@
     };
   };
 
-  let state = normalizeState(window.QuestlineStorage?.load());
-  let view = state.settings.view === "list" ? "list" : "board";
+  let state = null;
+  let view = "board";
+  let activeUserId = null;
+  let initializationId = 0;
+  let initializationPromise = null;
+  let initialized = false;
+  let syncTimer = null;
+  let syncInFlight = false;
+  let syncPending = false;
+  let eventsBound = false;
   let timer = { duration:25*60, remaining:25*60, running:false, endAt:0, interval:null, mode:"focus" };
-  let lastNotifiedLevel = state.profile.level;
+  let lastNotifiedLevel = 1;
   let activeDragId = null;
   const ringCircumference = 2 * Math.PI * 96;
   const ENERGY = { low:"⚡ Low", medium:"⚡⚡ Medium", high:"⚡⚡⚡ High" };
 
   function persist() {
+    if (!state || !activeUserId) return;
     state.profile.tier = state.profile.level >= 16 ? "master" : state.profile.level >= 6 ? "adept" : "novice";
     state.settings.view = view;
-    const ok = window.QuestlineStorage?.save(state);
-    if (ok === false) toast("Could not save locally. Your browser storage may be full.");
+    const ok = window.QuestlineStorage?.save(state, activeUserId);
+    if (ok === false) {
+      toast("Could not save locally. Your browser storage may be full.");
+      updateSyncStatus("Local save failed", true);
+    }
+    scheduleSync();
+  }
+  function updateSyncStatus(text, error = false) {
+    const status = $("#sync-status");
+    const dot = $("#sync-dot");
+    if (!status || !dot) return;
+    status.textContent = text;
+    dot.style.background = error ? "var(--rose)" : "";
+  }
+  function scheduleSync(delay = 650) {
+    if (!activeUserId || !state) return;
+    syncPending = true;
+    if (!navigator.onLine) {
+      updateSyncStatus("Offline · saved on this device");
+      return;
+    }
+    updateSyncStatus("Syncing…");
+    window.clearTimeout(syncTimer);
+    syncTimer = window.setTimeout(flushSync, delay);
+  }
+  async function flushSync() {
+    if (!syncPending || !activeUserId || !state) return;
+    if (!navigator.onLine) {
+      updateSyncStatus("Offline · saved on this device");
+      return;
+    }
+    if (syncInFlight) return;
+    const userId = activeUserId;
+    const snapshot = JSON.parse(JSON.stringify(state));
+    syncPending = false;
+    syncInFlight = true;
+    let failed = false;
+    try {
+      await window.QuestlineAuth.syncState(userId, snapshot);
+      if (activeUserId === userId) updateSyncStatus("Synced to your account");
+    } catch (error) {
+      failed = true;
+      if (activeUserId === userId) {
+        updateSyncStatus("Cloud sync failed · saved locally", true);
+        toast(`Cloud sync failed: ${escapeHTML(error?.message || "Please try again when online.")}`);
+        syncPending = true;
+      }
+    } finally {
+      syncInFlight = false;
+      if (syncPending && navigator.onLine && activeUserId &&
+          (!failed || activeUserId !== userId)) scheduleSync(1000);
+    }
   }
   function tierLabel() { return state.profile.tier === "master" ? "Master" : state.profile.tier === "adept" ? "Adept" : "Novice"; }
   function xpForNextLevel(level) { return level * 100; }
@@ -457,15 +528,18 @@
     draw();
   }
   let particleFrame=0;
+  let particleFrameId=0;
   function particleLoop() {
     const canvas=$("#fx-canvas");if(!canvas)return;
+    if(!state)return;
     const ctx=canvas.getContext("2d");const w=window.innerWidth,h=window.innerHeight,dpr=Math.min(window.devicePixelRatio||1,2);
     if(canvas.width!==w*dpr||canvas.height!==h*dpr){canvas.width=w*dpr;canvas.height=h*dpr;canvas.style.width=`${w}px`;canvas.style.height=`${h}px`;}
     ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
     if(state.profile.level>=6&&state.profile.level<16) {
       for(let i=0;i<45;i++){const x=(i*137.5+particleFrame*.12)%w;const y=(i*83.7+Math.sin(particleFrame*.008+i)*18)%h;ctx.fillStyle=`rgba(210,225,255,${.12+((i%5)/30)})`;ctx.beginPath();ctx.arc(x,y,i%4===0?1.5:.7,0,Math.PI*2);ctx.fill();}
     }
-    particleFrame++;requestAnimationFrame(particleLoop);
+    particleFrame++;
+    particleFrameId=requestAnimationFrame(particleLoop);
   }
   function exportBackup() {
     const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
@@ -506,13 +580,120 @@
       state.profile.customTags.push(tag);state.profile.tags.push(tag);$("#custom-tag-input").value="";persist();renderAll();toast(`Custom tag “${escapeHTML(tag)}” added.`);
     });
     $("#export-backup").addEventListener("click",exportBackup);
+    $("#signout-btn").addEventListener("click",async()=>{
+      const button=$("#signout-btn");
+      button.disabled=true;
+      try { await window.QuestlineAuth.signOut(); }
+      catch(error) { toast(`Could not sign out: ${escapeHTML(error?.message||"Please try again.")}`); }
+      finally { button.disabled=false; }
+    });
     initDragEvents();
     window.addEventListener("beforeunload",()=>{if(timer.running){timer.running=false;clearInterval(timer.interval);}});
   }
-  function init() {
-    // Seed/repair initial data and apply tier unlocks immediately.
-    updateUnlocks();persist();bindEvents();renderAll();particleLoop();
-    $("#task-workspace").addEventListener("dblclick",event=>{const card=event.target.closest("[data-task-card]");if(card){const task=state.tasks.find(t=>t.id===card.dataset.taskCard);if(task)openTaskDialog(task);}});
+  async function startForUser(user) {
+    if (!user?.id) return;
+    if (activeUserId === user.id && initialized) return;
+    if (activeUserId === user.id && initializationPromise) return initializationPromise;
+
+    activeUserId = user.id;
+    initialized = false;
+    const requestId = ++initializationId;
+    const app = $("#app-shell");
+    app.hidden = true;
+    app.inert = true;
+    app.setAttribute("aria-hidden", "true");
+    updateSyncStatus("Loading your progress…");
+
+    const operation = (async()=>{
+      let loaded = null;
+      let remoteAvailable = false;
+      try {
+        loaded = await window.QuestlineAuth.loadState(user.id);
+        remoteAvailable = true;
+      } catch(error) {
+        loaded = window.QuestlineStorage?.load(user.id) || null;
+        updateSyncStatus("Cloud unavailable · using local copy", true);
+        toast(`Could not load cloud data: ${escapeHTML(error?.message||"Check your connection and database setup.")}`);
+      }
+      if (requestId !== initializationId || activeUserId !== user.id) return;
+      if (!loaded) {
+        loaded = window.QuestlineStorage?.load(user.id) || {
+          profile: {
+            name: user.email?.split("@")[0] || "Quest Starter",
+            level: 1,
+            xp: 0,
+            totalXP: 0,
+            tier: "novice",
+            activeTheme: "dark",
+            unlockedThemes: ["dark", "light"]
+          },
+          tasks: [],
+          activity: { completions: [], focus: [] },
+          settings: { view: "board" }
+        };
+      }
+      state = normalizeState(loaded);
+      view = state.settings.view === "list" ? "list" : "board";
+      updateUnlocks();
+      lastNotifiedLevel = state.profile.level;
+      initialized = true;
+      if (!eventsBound) {
+        bindEvents();
+        $("#task-workspace").addEventListener("dblclick",event=>{
+          const card=event.target.closest("[data-task-card]");
+          if(card){const task=state.tasks.find(t=>t.id===card.dataset.taskCard);if(task)openTaskDialog(task);}
+        });
+        eventsBound = true;
+        window.addEventListener("online",()=>{if(syncPending)scheduleSync(0);});
+      }
+      app.hidden = false;
+      app.inert = false;
+      app.setAttribute("aria-hidden", "false");
+      renderAll();
+      window.QuestlineAuth.showDashboard();
+      persist();
+      if (!remoteAvailable) syncPending = true;
+      if (!particleFrameId) particleLoop();
+    })();
+    initializationPromise = operation;
+    try { await operation; }
+    finally {
+      if (initializationPromise === operation) initializationPromise = null;
+    }
   }
-  init();
+  function lockDashboard() {
+    initializationId += 1;
+    activeUserId = null;
+    initialized = false;
+    initializationPromise = null;
+    syncPending = false;
+    window.clearTimeout(syncTimer);
+    if (particleFrameId) {
+      window.cancelAnimationFrame(particleFrameId);
+      particleFrameId = 0;
+    }
+    if (timer.running) {
+      timer.running = false;
+      window.clearInterval(timer.interval);
+      timer.interval = null;
+    }
+    const app = $("#app-shell");
+    app.hidden = true;
+    app.inert = true;
+    app.setAttribute("aria-hidden", "true");
+    state = null;
+  }
+
+  window.addEventListener("questline:auth",event=>{
+    const currentUser = window.QuestlineAuth.user;
+    if (event.detail.user && currentUser?.id === event.detail.user.id) void startForUser(event.detail.user);
+    else if (!event.detail.user && !currentUser) lockDashboard();
+  });
+  window.QuestlineAuth.ready.then(({user})=>{
+    if (user) void startForUser(user);
+    else lockDashboard();
+  }).catch(error=>{
+    lockDashboard();
+    toast(`Could not start the dashboard: ${escapeHTML(error?.message||"Authentication is unavailable.")}`);
+  });
 })();

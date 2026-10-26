@@ -2,10 +2,11 @@
 (() => {
   "use strict";
   const KEY = "questline-state-v1";
+  const scopedKey = userId => `${KEY}:${encodeURIComponent(userId || "guest")}`;
   const Storage = {
-    load() {
+    load(userId) {
       try {
-        const raw = localStorage.getItem(KEY);
+        const raw = localStorage.getItem(scopedKey(userId));
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         return parsed && typeof parsed === "object" ? parsed : null;
@@ -14,17 +15,17 @@
         return null;
       }
     },
-    save(state) {
+    save(state, userId) {
       try {
-        localStorage.setItem(KEY, JSON.stringify(state));
+        localStorage.setItem(scopedKey(userId), JSON.stringify(state));
         return true;
       } catch (error) {
         console.warn("Questline could not save data.", error);
         return false;
       }
     },
-    clear() {
-      try { localStorage.removeItem(KEY); return true; }
+    clear(userId) {
+      try { localStorage.removeItem(scopedKey(userId)); return true; }
       catch (error) { console.warn("Questline could not clear data.", error); return false; }
     }
   };
