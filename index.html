@@ -28,6 +28,7 @@
         <label>Email address<input type="email" id="signin-email" autocomplete="email" maxlength="254" required placeholder="you@example.com"></label>
         <label>Password<input type="password" id="signin-password" autocomplete="current-password" minlength="8" required placeholder="At least 8 characters"></label>
         <button class="primary-btn auth-submit" type="submit">Sign in <span>→</span></button>
+        <button class="auth-resend" id="resend-confirmation-btn" type="button">Resend confirmation email</button>
       </form>
       <form class="auth-form" id="signup-panel" aria-labelledby="signup-tab" hidden>
         <label>Email address<input type="email" id="signup-email" autocomplete="email" maxlength="254" required placeholder="you@example.com"></label>
@@ -35,6 +36,10 @@
         <label>Confirm password<input type="password" id="signup-confirm" autocomplete="new-password" minlength="8" required placeholder="Enter your password again"></label>
         <button class="primary-btn auth-submit" type="submit">Create account <span>✦</span></button>
       </form>
+      <div class="auth-demo-option">
+        <p>Want to preview the dashboard first? Demo changes stay in this browser and never sync to an account.</p>
+        <button class="secondary-btn auth-demo-btn" id="demo-mode-btn" type="button">Continue in local demo</button>
+      </div>
       <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
       <p class="auth-footnote">Your account keeps your quests and level progress in sync across devices.</p>
     </div>

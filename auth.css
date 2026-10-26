@@ -13,6 +13,11 @@
 .auth-form input::placeholder{color:var(--muted);opacity:.75}
 .auth-submit{width:100%;margin-top:3px;padding:13px}
 .auth-submit span{font-size:15px}
+.auth-resend{border:0;background:transparent;color:var(--accent);font-size:11px;font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:4px}
+.auth-resend:disabled{opacity:.55;cursor:wait}
+.auth-demo-option{margin-top:23px;padding-top:19px;border-top:1px solid var(--border)}
+.auth-demo-option p{margin:0 0 12px;color:var(--muted);font-size:10px;line-height:1.6}
+.auth-demo-btn{width:100%;padding:12px}
 .auth-message{min-height:20px;margin:14px 0 0;color:var(--muted);font-size:11px;line-height:1.6}
 .auth-message[data-kind="error"]{color:#ff9aa9}
 .auth-message[data-kind="success"]{color:var(--good)}

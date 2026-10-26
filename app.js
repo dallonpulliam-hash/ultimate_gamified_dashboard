@@ -71,6 +71,7 @@
   let state = null;
   let view = "board";
   let activeUserId = null;
+  let activeUserIsDemo = false;
   let initializationId = 0;
   let initializationPromise = null;
   let initialized = false;
@@ -104,6 +105,10 @@
   }
   function scheduleSync(delay = 650) {
     if (!activeUserId || !state) return;
+    if (activeUserIsDemo) {
+      updateSyncStatus("Local demo · saved only on this device");
+      return;
+    }
     syncPending = true;
     if (!navigator.onLine) {
       updateSyncStatus("Offline · saved on this device");
@@ -583,7 +588,10 @@
     $("#signout-btn").addEventListener("click",async()=>{
       const button=$("#signout-btn");
       button.disabled=true;
-      try { await window.QuestlineAuth.signOut(); }
+      try {
+        if (window.QuestlineAuth.isDemo) window.QuestlineAuth.exitDemo();
+        else await window.QuestlineAuth.signOut();
+      }
       catch(error) { toast(`Could not sign out: ${escapeHTML(error?.message||"Please try again.")}`); }
       finally { button.disabled=false; }
     });
@@ -596,20 +604,25 @@
     if (activeUserId === user.id && initializationPromise) return initializationPromise;
 
     activeUserId = user.id;
+    activeUserIsDemo = user.isDemo === true;
     initialized = false;
     const requestId = ++initializationId;
     const app = $("#app-shell");
     app.hidden = true;
     app.inert = true;
     app.setAttribute("aria-hidden", "true");
-    updateSyncStatus("Loading your progress…");
+    updateSyncStatus(activeUserIsDemo ? "Loading local demo…" : "Loading your progress…");
 
     const operation = (async()=>{
       let loaded = null;
       let remoteAvailable = false;
       try {
-        loaded = await window.QuestlineAuth.loadState(user.id);
-        remoteAvailable = true;
+        if (activeUserIsDemo) {
+          loaded = window.QuestlineStorage?.load(user.id) || null;
+        } else {
+          loaded = await window.QuestlineAuth.loadState(user.id);
+          remoteAvailable = true;
+        }
       } catch(error) {
         loaded = window.QuestlineStorage?.load(user.id) || null;
         updateSyncStatus("Cloud unavailable · using local copy", true);
@@ -617,7 +630,7 @@
       }
       if (requestId !== initializationId || activeUserId !== user.id) return;
       if (!loaded) {
-        loaded = window.QuestlineStorage?.load(user.id) || {
+        loaded = window.QuestlineStorage?.load(user.id) || (activeUserIsDemo ? null : {
           profile: {
             name: user.email?.split("@")[0] || "Quest Starter",
             level: 1,
@@ -630,7 +643,7 @@
           tasks: [],
           activity: { completions: [], focus: [] },
           settings: { view: "board" }
-        };
+        });
       }
       state = normalizeState(loaded);
       view = state.settings.view === "list" ? "list" : "board";
@@ -651,6 +664,8 @@
       app.setAttribute("aria-hidden", "false");
       renderAll();
       window.QuestlineAuth.showDashboard();
+      $("#signout-btn").textContent = activeUserIsDemo ? "Exit demo" : "Sign out";
+      updateSyncStatus(activeUserIsDemo ? "Local demo · saved only on this device" : "Synced to your account");
       persist();
       if (!remoteAvailable) syncPending = true;
       if (!particleFrameId) particleLoop();
@@ -666,6 +681,7 @@
     activeUserId = null;
     initialized = false;
     initializationPromise = null;
+    activeUserIsDemo = false;
     syncPending = false;
     window.clearTimeout(syncTimer);
     if (particleFrameId) {
@@ -686,12 +702,15 @@
 
   window.addEventListener("questline:auth",event=>{
     const currentUser = window.QuestlineAuth.user;
-    if (event.detail.user && currentUser?.id === event.detail.user.id) void startForUser(event.detail.user);
-    else if (!event.detail.user && !currentUser) lockDashboard();
+    if (event.detail.user?.isDemo && window.QuestlineAuth.isDemo) void startForUser(event.detail.user);
+    else if (event.detail.user && currentUser?.id === event.detail.user.id) void startForUser(event.detail.user);
+    else if (!event.detail.user && !currentUser && !window.QuestlineAuth.isDemo) lockDashboard();
   });
   window.QuestlineAuth.ready.then(({user})=>{
     if (user) void startForUser(user);
-    else lockDashboard();
+    else if (window.QuestlineAuth.isDemo) {
+      void startForUser({id:"local-demo",email:"demo@local.invalid",isDemo:true});
+    } else lockDashboard();
   }).catch(error=>{
     lockDashboard();
     toast(`Could not start the dashboard: ${escapeHTML(error?.message||"Authentication is unavailable.")}`);

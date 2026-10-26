@@ -11,8 +11,10 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   const message = document.getElementById("auth-message");
   const signinTab = document.getElementById("signin-tab");
   const signupTab = document.getElementById("signup-tab");
+  const resendButton = document.getElementById("resend-confirmation-btn");
   const tabs = gate.querySelector(".auth-tabs");
   const footnote = gate.querySelector(".auth-footnote");
+  const demoButton = document.getElementById("demo-mode-btn");
   const configured = SUPABASE_URL !== "YOUR_SUPABASE_URL" &&
     SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY";
   const client = configured && window.supabase?.createClient
@@ -22,6 +24,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     : null;
 
   let session = null;
+  let demoMode = false;
   let resolveReady;
   const ready = new Promise(resolve => { resolveReady = resolve; });
 
@@ -82,6 +85,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   function publishSession(nextSession, eventName) {
     const previousId = session?.user?.id || null;
     session = nextSession;
+    if (session?.user) demoMode = false;
     if (session?.user) {
       if (previousId !== session.user.id) showLoading();
     } else showGate();
@@ -119,6 +123,37 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
   signinTab.addEventListener("click", () => setTab("signin"));
   signupTab.addEventListener("click", () => setTab("signup"));
+  demoButton.addEventListener("click", () => {
+    if (session?.user) return;
+    demoMode = true;
+    gate.hidden = true;
+    window.dispatchEvent(new CustomEvent("questline:auth", {
+      detail: {
+        user: { id: "local-demo", email: "demo@local.invalid", isDemo: true },
+        event: "DEMO_STARTED"
+      }
+    }));
+  });
+
+  resendButton.addEventListener("click", async () => {
+    const emailInput = document.getElementById("signin-email");
+    emailInput.value = emailInput.value.trim();
+    if (!emailInput.reportValidity() || !client) return;
+    resendButton.disabled = true;
+    setMessage("Sending a new confirmation email…");
+    try {
+      const { error } = await client.auth.resend({
+        type: "signup",
+        email: emailInput.value
+      });
+      if (error) throw error;
+      setMessage("If this address has a pending confirmation, Supabase has sent a new email. Check spam and promotions too.", "success");
+    } catch (error) {
+      setMessage(`Could not resend the confirmation email: ${friendlyError(error)}`, "error");
+    } finally {
+      resendButton.disabled = false;
+    }
+  });
 
   signinForm.addEventListener("submit", async event => {
     event.preventDefault();
@@ -165,7 +200,9 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
       const { data, error } = await client.auth.signUp({ email, password });
       if (error) throw error;
       if (data.user?.identities?.length === 0) {
-        setMessage("An account already exists for that email. Sign in instead.", "error");
+        setTab("signin");
+        document.getElementById("signin-email").value = email;
+        setMessage("An account already exists for that email. Sign in, or resend its confirmation email below.", "error");
         return;
       }
       if (data.session) {
@@ -181,8 +218,9 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
         setMessage("");
       } else {
         setTab("signin");
-        setMessage("Account created. Check your email to confirm your account, then sign in.", "success");
         document.getElementById("signin-email").value = email;
+        resendButton.hidden = false;
+        setMessage("Account created, but sign-in requires email confirmation. Check spam/promotions, or resend the confirmation email below.", "success");
       }
     } catch (error) {
       setMessage(friendlyError(error), "error");
@@ -195,6 +233,15 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     get client() { return client; },
     get session() { return session; },
     get user() { return session?.user || null; },
+    get isDemo() { return demoMode; },
+    exitDemo() {
+      if (!demoMode) return;
+      demoMode = false;
+      showGate();
+      window.dispatchEvent(new CustomEvent("questline:auth", {
+        detail: { user: null, event: "DEMO_ENDED" }
+      }));
+    },
     ready,
     showDashboard,
     showLoading,
