@@ -1,170 +1,584 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#101522">
-  <title>Questline — Gamified Productivity</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="auth.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-  <script src="storage.js" defer></script>
-  <script src="auth.js" defer></script>
-  <script src="app.js" defer></script>
-</head>
-<body data-theme="dark">
-  <canvas id="fx-canvas" aria-hidden="true"></canvas>
-  <section class="auth-gate" id="auth-gate" aria-labelledby="auth-title">
-    <div class="auth-card glass">
-      <a class="brand auth-brand" href="#" aria-label="Questline home"><span class="brand-mark">✦</span><span>questline<span class="brand-dot">.</span></span></a>
-      <div class="auth-heading"><p class="eyebrow">YOUR PROGRESS, EVERYWHERE</p><h1 id="auth-title">Welcome back.</h1><p>Sign in to pick up where you left off, on any device.</p></div>
-      <div class="auth-tabs" role="tablist" aria-label="Account access">
-        <button type="button" class="auth-tab active" id="signin-tab" role="tab" aria-selected="true" aria-controls="signin-panel">Sign in</button>
-        <button type="button" class="auth-tab" id="signup-tab" role="tab" aria-selected="false" aria-controls="signup-panel">Create account</button>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101522" />
+    <title>Questline — Gamified Productivity</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="auth.css" />
+    <script
+      src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+      defer
+    ></script>
+    <script src="storage.js" defer></script>
+    <script src="auth.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body data-theme="dark">
+    <canvas id="fx-canvas" aria-hidden="true"></canvas>
+    <section class="auth-gate" id="auth-gate" aria-labelledby="auth-title">
+      <div class="auth-card glass">
+        <a class="brand auth-brand" href="#" aria-label="Questline home"
+          ><span class="brand-mark">✦</span
+          ><span>questline<span class="brand-dot">.</span></span></a
+        >
+        <div class="auth-heading">
+          <p class="eyebrow">YOUR PROGRESS, EVERYWHERE</p>
+          <h1 id="auth-title">Welcome back.</h1>
+          <p>Sign in to pick up where you left off, on any device.</p>
+        </div>
+        <div class="auth-tabs" role="tablist" aria-label="Account access">
+          <button
+            type="button"
+            class="auth-tab active"
+            id="signin-tab"
+            role="tab"
+            aria-selected="true"
+            aria-controls="signin-panel"
+          >
+            Sign in
+          </button>
+          <button
+            type="button"
+            class="auth-tab"
+            id="signup-tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="signup-panel"
+          >
+            Create account
+          </button>
+        </div>
+        <form class="auth-form" id="signin-panel" aria-labelledby="signin-tab">
+          <label
+            >Email address<input
+              type="email"
+              id="signin-email"
+              autocomplete="email"
+              maxlength="254"
+              required
+              placeholder="you@example.com"
+          /></label>
+          <label
+            >Password<input
+              type="password"
+              id="signin-password"
+              autocomplete="current-password"
+              minlength="8"
+              required
+              placeholder="At least 8 characters"
+          /></label>
+          <button class="primary-btn auth-submit" type="submit">
+            Sign in <span>→</span>
+          </button>
+          <button
+            class="auth-resend"
+            id="resend-confirmation-btn"
+            type="button"
+          >
+            Resend confirmation email
+          </button>
+        </form>
+        <form
+          class="auth-form"
+          id="signup-panel"
+          aria-labelledby="signup-tab"
+          hidden
+        >
+          <label
+            >Email address<input
+              type="email"
+              id="signup-email"
+              autocomplete="email"
+              maxlength="254"
+              required
+              placeholder="you@example.com"
+          /></label>
+          <label
+            >Password<input
+              type="password"
+              id="signup-password"
+              autocomplete="new-password"
+              minlength="8"
+              required
+              placeholder="At least 8 characters"
+          /></label>
+          <label
+            >Confirm password<input
+              type="password"
+              id="signup-confirm"
+              autocomplete="new-password"
+              minlength="8"
+              required
+              placeholder="Enter your password again"
+          /></label>
+          <button class="primary-btn auth-submit" type="submit">
+            Create account <span>✦</span>
+          </button>
+        </form>
+        <div class="auth-demo-option">
+          <p>
+            Want to preview the dashboard first? Demo changes stay in this
+            browser and never sync to an account.
+          </p>
+          <button
+            class="secondary-btn auth-demo-btn"
+            id="demo-mode-btn"
+            type="button"
+          >
+            Continue in local demo
+          </button>
+        </div>
+        <p
+          class="auth-message"
+          id="auth-message"
+          role="status"
+          aria-live="polite"
+        ></p>
+        <p class="auth-footnote">
+          Your account keeps your quests and level progress in sync across
+          devices.
+        </p>
       </div>
-      <form class="auth-form" id="signin-panel" aria-labelledby="signin-tab">
-        <label>Email address<input type="email" id="signin-email" autocomplete="email" maxlength="254" required placeholder="you@example.com"></label>
-        <label>Password<input type="password" id="signin-password" autocomplete="current-password" minlength="8" required placeholder="At least 8 characters"></label>
-        <button class="primary-btn auth-submit" type="submit">Sign in <span>→</span></button>
-        <button class="auth-resend" id="resend-confirmation-btn" type="button">Resend confirmation email</button>
-      </form>
-      <form class="auth-form" id="signup-panel" aria-labelledby="signup-tab" hidden>
-        <label>Email address<input type="email" id="signup-email" autocomplete="email" maxlength="254" required placeholder="you@example.com"></label>
-        <label>Password<input type="password" id="signup-password" autocomplete="new-password" minlength="8" required placeholder="At least 8 characters"></label>
-        <label>Confirm password<input type="password" id="signup-confirm" autocomplete="new-password" minlength="8" required placeholder="Enter your password again"></label>
-        <button class="primary-btn auth-submit" type="submit">Create account <span>✦</span></button>
-      </form>
-      <div class="auth-demo-option">
-        <p>Want to preview the dashboard first? Demo changes stay in this browser and never sync to an account.</p>
-        <button class="secondary-btn auth-demo-btn" id="demo-mode-btn" type="button">Continue in local demo</button>
-      </div>
-      <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
-      <p class="auth-footnote">Your account keeps your quests and level progress in sync across devices.</p>
+    </section>
+    <div class="app-shell" id="app-shell" hidden inert aria-hidden="true">
+      <aside class="sidebar glass">
+        <a class="brand" href="#" aria-label="Questline home"
+          ><span class="brand-mark">✦</span
+          ><span>questline<span class="brand-dot">.</span></span></a
+        >
+        <div class="profile-mini">
+          <div class="avatar" id="avatar">Q</div>
+          <div>
+            <strong id="profile-name">Quest Starter</strong
+            ><small id="profile-tier">Novice · Level 1</small>
+          </div>
+          <span class="online-dot"></span>
+        </div>
+        <nav class="main-nav" aria-label="Main navigation">
+          <button class="nav-item active" data-nav="dashboard">
+            <span>▦</span> Dashboard
+          </button>
+          <button class="nav-item" data-nav="tasks">
+            <span>☷</span> All tasks
+            <span class="nav-count" id="nav-task-count">0</span>
+          </button>
+          <button class="nav-item" data-nav="focus">
+            <span>◷</span> Focus room
+          </button>
+          <button class="nav-item" data-nav="rewards">
+            <span>✧</span> Rewards & themes
+          </button>
+          <a class="nav-item" href="fitness.html"
+            ><span>⚔</span> Fitness arena</a
+          >
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="mini-quest">
+            <div class="mini-quest-top">
+              <span>DAILY QUEST</span><span>✦ 30 XP</span>
+            </div>
+            <strong>Make progress today</strong>
+            <div class="quest-track"><span id="daily-progress"></span></div>
+            <small id="daily-text">0 of 3 tasks completed</small>
+          </div>
+          <button class="nav-item" id="settings-btn">
+            <span>⚙</span> Settings
+          </button>
+          <div class="sidebar-footer">
+            <span class="status-dot" id="sync-dot"></span
+            ><span id="sync-status">Saved on this device</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="date-label">YOUR SPACE · TODAY</p>
+            <h1 id="page-heading">Your productivity, <em>leveled up.</em></h1>
+          </div>
+          <div class="top-actions">
+            <button
+              class="icon-btn"
+              id="theme-toggle"
+              aria-label="Toggle light and dark theme"
+              title="Toggle theme"
+            >
+              ◐
+            </button>
+            <button
+              class="avatar small-avatar"
+              id="top-avatar"
+              aria-label="Edit profile"
+            >
+              Q
+            </button>
+            <button class="primary-btn" id="new-task-btn">
+              <span>＋</span> New task
+            </button>
+            <button class="secondary-btn" id="signout-btn" type="button">
+              Sign out
+            </button>
+          </div>
+        </header>
+
+        <section class="hero-grid">
+          <article class="welcome-card glass">
+            <div class="welcome-copy">
+              <div class="pill">
+                <span class="pulse"></span> YOUR NEXT CHAPTER STARTS HERE
+              </div>
+              <h2>Small wins.<br /><span>Big momentum.</span></h2>
+              <p>
+                Turn your focus into progress. Every completed task brings you
+                closer to your next level.
+              </p>
+              <button class="light-btn" id="jump-tasks">
+                View my quests <span>↗</span>
+              </button>
+            </div>
+            <div class="hero-orb" aria-hidden="true">
+              <div class="orb-ring ring-one"></div>
+              <div class="orb-ring ring-two"></div>
+              <div class="orb-core">✦</div>
+              <span class="orb-label orb-label-one">FOCUS</span
+              ><span class="orb-label orb-label-two">GROWTH</span>
+            </div>
+            <div class="hero-glow"></div>
+          </article>
+          <article class="level-card glass">
+            <div class="card-heading">
+              <span>YOUR JOURNEY</span
+              ><span class="tier-chip" id="tier-chip">NOVICE</span>
+            </div>
+            <div class="level-row">
+              <div class="level-number" id="level-number">01</div>
+              <div>
+                <strong id="tier-name">Novice Explorer</strong>
+                <p id="level-caption">Every master starts somewhere.</p>
+              </div>
+            </div>
+            <div class="xp-meta">
+              <span>Experience points</span
+              ><strong id="xp-label">0 / 100 XP</strong>
+            </div>
+            <div class="xp-track"><span id="xp-progress"></span></div>
+            <div class="level-foot">
+              <span id="next-level-text">100 XP to Level 2</span
+              ><span>✧ <b id="total-xp">0</b> total</span>
+            </div>
+            <div class="reward-note" id="reward-note">
+              Complete tasks to earn XP and unlock new tools.
+            </div>
+          </article>
+        </section>
+
+        <section class="stats-grid" aria-label="Productivity stats">
+          <article class="stat-card glass">
+            <div class="stat-icon purple">☷</div>
+            <div>
+              <span>Active quests</span><strong id="stat-active">0</strong
+              ><small><i>↗</i> Ready when you are</small>
+            </div>
+            <div class="stat-spark">⌁</div>
+          </article>
+          <article class="stat-card glass">
+            <div class="stat-icon green">✓</div>
+            <div>
+              <span>Completed</span><strong id="stat-completed">0</strong
+              ><small><i>↗</i> Wins in the bank</small>
+            </div>
+            <div class="stat-spark">⌁</div>
+          </article>
+          <article class="stat-card glass">
+            <div class="stat-icon amber">◷</div>
+            <div>
+              <span>Focus minutes</span><strong id="stat-focus">0</strong
+              ><small><i>↗</i> Deep work adds up</small>
+            </div>
+            <div class="stat-spark">⌁</div>
+          </article>
+          <article class="stat-card glass">
+            <div class="stat-icon rose">♨</div>
+            <div>
+              <span>Day streak</span
+              ><strong id="stat-streak">0 <small>days</small></strong
+              ><small><i>↗</i> Keep the flame alive</small>
+            </div>
+            <div class="stat-spark">⌁</div>
+          </article>
+        </section>
+
+        <section class="workspace-section" id="workspace">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">THE MISSION BOARD</p>
+              <h2>Make it happen<span class="period">.</span></h2>
+            </div>
+            <div class="view-switch">
+              <button class="view-btn active" data-view="board">▦ Board</button
+              ><button class="view-btn" data-view="list">☷ List</button>
+            </div>
+          </div>
+          <div class="toolbar">
+            <label class="search-box"
+              ><span>⌕</span
+              ><input
+                id="search-input"
+                type="search"
+                placeholder="Search your quests..."
+                aria-label="Search tasks"
+            /></label>
+            <select id="priority-filter" aria-label="Filter by priority">
+              <option value="all">All priorities</option>
+              <option value="critical">Critical</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <select id="energy-filter" aria-label="Filter by energy">
+              <option value="all">All energy levels</option>
+              <option value="low">⚡ Low demand</option>
+              <option value="medium">⚡⚡ Medium demand</option>
+              <option value="high">⚡⚡⚡ High demand</option>
+            </select>
+            <select id="tag-filter" aria-label="Filter by tag">
+              <option value="all">All tags</option>
+            </select>
+          </div>
+          <div id="task-workspace" class="kanban-grid"></div>
+          <div class="empty-state glass" id="empty-state" hidden>
+            <div class="empty-icon">✧</div>
+            <h3>No quests found</h3>
+            <p>Try changing your filters or create a new task to get moving.</p>
+            <button class="primary-btn" id="empty-new-task">
+              ＋ Create a task
+            </button>
+          </div>
+        </section>
+
+        <section class="bottom-grid">
+          <article class="focus-card glass" id="focus-panel">
+            <div class="section-heading compact">
+              <div>
+                <p class="eyebrow">PROTECT YOUR ATTENTION</p>
+                <h2>Focus room<span class="period">.</span></h2>
+              </div>
+              <span class="focus-status" id="timer-status">READY TO FOCUS</span>
+            </div>
+            <div class="timer-layout">
+              <div class="timer-ring-wrap">
+                <svg
+                  class="timer-svg"
+                  viewBox="0 0 220 220"
+                  aria-label="Pomodoro countdown"
+                >
+                  <circle class="timer-track" cx="110" cy="110" r="96"></circle>
+                  <circle
+                    class="timer-progress"
+                    id="timer-ring"
+                    cx="110"
+                    cy="110"
+                    r="96"
+                  ></circle>
+                </svg>
+                <div class="timer-center">
+                  <span id="timer-mode">FOCUS SESSION</span
+                  ><strong id="timer-display">25:00</strong
+                  ><small id="timer-subtitle">One thing at a time.</small>
+                </div>
+              </div>
+              <div class="timer-controls">
+                <label for="focus-task-select">Focus quest</label
+                ><select id="focus-task-select">
+                  <option value="">Choose a task (optional)</option>
+                </select>
+                <div class="timer-presets">
+                  <button class="preset active" data-minutes="25">25 min</button
+                  ><button class="preset" data-minutes="15">15 min</button
+                  ><button class="preset" data-minutes="5">5 min</button>
+                </div>
+                <div class="timer-buttons">
+                  <button class="primary-btn" id="timer-start">
+                    ▶ Start focus</button
+                  ><button class="secondary-btn" id="timer-reset">↺</button>
+                </div>
+                <p class="timer-hint">Finish a session to earn <b>25 XP</b>.</p>
+              </div>
+            </div>
+          </article>
+          <article class="insights-card glass">
+            <div class="section-heading compact">
+              <div>
+                <p class="eyebrow">YOUR MOMENTUM</p>
+                <h2>Today's rhythm<span class="period">.</span></h2>
+              </div>
+              <span class="insight-icon">✧</span>
+            </div>
+            <div
+              class="rhythm-chart"
+              id="rhythm-chart"
+              aria-label="Weekly task completion chart"
+            ></div>
+            <div class="rhythm-footer">
+              <span><i class="chart-dot"></i> Tasks completed</span
+              ><strong id="week-completed">0 this week</strong>
+            </div>
+            <div class="insight-tip">
+              <span>✦</span>
+              <div>
+                <strong>Momentum tip</strong>
+                <p id="momentum-tip">
+                  Start with one small task. Consistency beats intensity.
+                </p>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="rewards-section glass" id="rewards-panel">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">LEVEL UP YOUR WORKSPACE</p>
+              <h2>Rewards & themes<span class="period">.</span></h2>
+            </div>
+            <span class="unlock-count" id="unlock-count">1 theme unlocked</span>
+          </div>
+          <div id="theme-grid" class="theme-grid"></div>
+          <div class="custom-tag-area" id="custom-tag-area" hidden>
+            <div>
+              <strong>Master's forge</strong>
+              <p>Create a custom tag for the way you work.</p>
+            </div>
+            <form id="custom-tag-form">
+              <input
+                id="custom-tag-input"
+                maxlength="24"
+                placeholder="e.g. Client Work"
+                aria-label="New custom tag"
+              /><button class="primary-btn" type="submit">＋ Add tag</button>
+            </form>
+          </div>
+        </section>
+        <footer class="app-footer">
+          <span>✦ QUESTLINE</span
+          ><span>Built for progress, not perfection.</span
+          ><button id="export-backup">Export backup JSON ↗</button>
+        </footer>
+      </main>
     </div>
-  </section>
-  <div class="app-shell" id="app-shell" hidden inert aria-hidden="true">
-    <aside class="sidebar glass">
-      <a class="brand" href="#" aria-label="Questline home"><span class="brand-mark">✦</span><span>questline<span class="brand-dot">.</span></span></a>
-      <div class="profile-mini">
-        <div class="avatar" id="avatar">Q</div>
-        <div><strong id="profile-name">Quest Starter</strong><small id="profile-tier">Novice · Level 1</small></div>
-        <span class="online-dot"></span>
-      </div>
-      <nav class="main-nav" aria-label="Main navigation">
-        <button class="nav-item active" data-nav="dashboard"><span>▦</span> Dashboard</button>
-        <button class="nav-item" data-nav="tasks"><span>☷</span> All tasks <span class="nav-count" id="nav-task-count">0</span></button>
-        <button class="nav-item" data-nav="focus"><span>◷</span> Focus room</button>
-        <button class="nav-item" data-nav="rewards"><span>✧</span> Rewards & themes</button>
-        <a class="nav-item" href="fitness.html"><span>⚔</span> Fitness arena</a>
-      </nav>
-      <div class="sidebar-bottom">
-        <div class="mini-quest">
-          <div class="mini-quest-top"><span>DAILY QUEST</span><span>✦ 30 XP</span></div>
-          <strong>Make progress today</strong>
-          <div class="quest-track"><span id="daily-progress"></span></div>
-          <small id="daily-text">0 of 3 tasks completed</small>
-        </div>
-        <button class="nav-item" id="settings-btn"><span>⚙</span> Settings</button>
-        <div class="sidebar-footer"><span class="status-dot" id="sync-dot"></span><span id="sync-status">Saved on this device</span></div>
-      </div>
-    </aside>
 
-    <main class="main-content">
-      <header class="topbar">
-        <div><p class="eyebrow" id="date-label">YOUR SPACE · TODAY</p><h1 id="page-heading">Your productivity, <em>leveled up.</em></h1></div>
-        <div class="top-actions">
-          <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark theme" title="Toggle theme">◐</button>
-          <button class="avatar small-avatar" id="top-avatar" aria-label="Edit profile">Q</button>
-          <button class="primary-btn" id="new-task-btn"><span>＋</span> New task</button>
-          <button class="secondary-btn" id="signout-btn" type="button">Sign out</button>
-        </div>
-      </header>
-
-      <section class="hero-grid">
-        <article class="welcome-card glass">
-          <div class="welcome-copy"><div class="pill"><span class="pulse"></span> YOUR NEXT CHAPTER STARTS HERE</div>
-            <h2>Small wins.<br><span>Big momentum.</span></h2>
-            <p>Turn your focus into progress. Every completed task brings you closer to your next level.</p>
-            <button class="light-btn" id="jump-tasks">View my quests <span>↗</span></button>
+    <dialog id="task-dialog" class="modal">
+      <form id="task-form" class="modal-card">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">ADD TO YOUR MISSION BOARD</p>
+            <h2 id="task-dialog-title">Create a quest</h2>
           </div>
-          <div class="hero-orb" aria-hidden="true"><div class="orb-ring ring-one"></div><div class="orb-ring ring-two"></div><div class="orb-core">✦</div><span class="orb-label orb-label-one">FOCUS</span><span class="orb-label orb-label-two">GROWTH</span></div>
-          <div class="hero-glow"></div>
-        </article>
-        <article class="level-card glass">
-          <div class="card-heading"><span>YOUR JOURNEY</span><span class="tier-chip" id="tier-chip">NOVICE</span></div>
-          <div class="level-row"><div class="level-number" id="level-number">01</div><div><strong id="tier-name">Novice Explorer</strong><p id="level-caption">Every master starts somewhere.</p></div></div>
-          <div class="xp-meta"><span>Experience points</span><strong id="xp-label">0 / 100 XP</strong></div>
-          <div class="xp-track"><span id="xp-progress"></span></div>
-          <div class="level-foot"><span id="next-level-text">100 XP to Level 2</span><span>✧ <b id="total-xp">0</b> total</span></div>
-          <div class="reward-note" id="reward-note">Complete tasks to earn XP and unlock new tools.</div>
-        </article>
-      </section>
-
-      <section class="stats-grid" aria-label="Productivity stats">
-        <article class="stat-card glass"><div class="stat-icon purple">☷</div><div><span>Active quests</span><strong id="stat-active">0</strong><small><i>↗</i> Ready when you are</small></div><div class="stat-spark">⌁</div></article>
-        <article class="stat-card glass"><div class="stat-icon green">✓</div><div><span>Completed</span><strong id="stat-completed">0</strong><small><i>↗</i> Wins in the bank</small></div><div class="stat-spark">⌁</div></article>
-        <article class="stat-card glass"><div class="stat-icon amber">◷</div><div><span>Focus minutes</span><strong id="stat-focus">0</strong><small><i>↗</i> Deep work adds up</small></div><div class="stat-spark">⌁</div></article>
-        <article class="stat-card glass"><div class="stat-icon rose">♨</div><div><span>Day streak</span><strong id="stat-streak">0 <small>days</small></strong><small><i>↗</i> Keep the flame alive</small></div><div class="stat-spark">⌁</div></article>
-      </section>
-
-      <section class="workspace-section" id="workspace">
-        <div class="section-heading"><div><p class="eyebrow">THE MISSION BOARD</p><h2>Make it happen<span class="period">.</span></h2></div>
-          <div class="view-switch"><button class="view-btn active" data-view="board">▦ Board</button><button class="view-btn" data-view="list">☷ List</button></div>
+          <button
+            type="button"
+            class="icon-btn close-dialog"
+            aria-label="Close"
+          >
+            ×
+          </button>
         </div>
-        <div class="toolbar">
-          <label class="search-box"><span>⌕</span><input id="search-input" type="search" placeholder="Search your quests..." aria-label="Search tasks"></label>
-          <select id="priority-filter" aria-label="Filter by priority"><option value="all">All priorities</option><option value="critical">Critical</option><option value="medium">Medium</option><option value="low">Low</option></select>
-          <select id="energy-filter" aria-label="Filter by energy"><option value="all">All energy levels</option><option value="low">⚡ Low demand</option><option value="medium">⚡⚡ Medium demand</option><option value="high">⚡⚡⚡ High demand</option></select>
-          <select id="tag-filter" aria-label="Filter by tag"><option value="all">All tags</option></select>
+        <input type="hidden" id="task-id" />
+        <label
+          >Task title<input
+            id="task-title"
+            required
+            maxlength="100"
+            placeholder="What do you want to accomplish?"
+        /></label>
+        <label
+          >Description<textarea
+            id="task-description"
+            rows="3"
+            maxlength="500"
+            placeholder="Add a little context..."
+          ></textarea>
+        </label>
+        <div class="form-grid">
+          <label
+            >Priority<select id="task-priority">
+              <option value="medium">Medium</option>
+              <option value="critical">Critical</option>
+              <option value="low">Low</option>
+            </select></label
+          ><label
+            >Status<select id="task-status">
+              <option value="todo">To-Do</option>
+              <option value="progress">In Progress</option>
+              <option value="review">Review</option>
+              <option value="completed">Completed</option>
+            </select></label
+          >
         </div>
-        <div id="task-workspace" class="kanban-grid"></div>
-        <div class="empty-state glass" id="empty-state" hidden><div class="empty-icon">✧</div><h3>No quests found</h3><p>Try changing your filters or create a new task to get moving.</p><button class="primary-btn" id="empty-new-task">＋ Create a task</button></div>
-      </section>
-
-      <section class="bottom-grid">
-        <article class="focus-card glass" id="focus-panel">
-          <div class="section-heading compact"><div><p class="eyebrow">PROTECT YOUR ATTENTION</p><h2>Focus room<span class="period">.</span></h2></div><span class="focus-status" id="timer-status">READY TO FOCUS</span></div>
-          <div class="timer-layout">
-            <div class="timer-ring-wrap"><svg class="timer-svg" viewBox="0 0 220 220" aria-label="Pomodoro countdown"><circle class="timer-track" cx="110" cy="110" r="96"></circle><circle class="timer-progress" id="timer-ring" cx="110" cy="110" r="96"></circle></svg><div class="timer-center"><span id="timer-mode">FOCUS SESSION</span><strong id="timer-display">25:00</strong><small id="timer-subtitle">One thing at a time.</small></div></div>
-            <div class="timer-controls"><label for="focus-task-select">Focus quest</label><select id="focus-task-select"><option value="">Choose a task (optional)</option></select><div class="timer-presets"><button class="preset active" data-minutes="25">25 min</button><button class="preset" data-minutes="15">15 min</button><button class="preset" data-minutes="5">5 min</button></div><div class="timer-buttons"><button class="primary-btn" id="timer-start">▶ Start focus</button><button class="secondary-btn" id="timer-reset">↺</button></div><p class="timer-hint">Finish a session to earn <b>25 XP</b>.</p></div>
+        <div class="form-grid">
+          <label>Due date<input id="task-due" type="date" /></label
+          ><label
+            >Energy demand<select id="task-energy">
+              <option value="low">⚡ Low</option>
+              <option value="medium" selected>⚡⚡ Medium</option>
+              <option value="high">⚡⚡⚡ High</option>
+            </select></label
+          >
+        </div>
+        <label>Tag<select id="task-tag"></select></label>
+        <label
+          >Subtasks <span class="muted">(one per line)</span
+          ><textarea
+            id="task-subtasks"
+            rows="3"
+            placeholder="Outline the first step&#10;Finish the next step"
+          ></textarea>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="secondary-btn close-dialog">
+            Cancel</button
+          ><button type="submit" class="primary-btn">Save quest</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="profile-dialog" class="modal">
+      <form id="profile-form" class="modal-card small-modal">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">YOUR IDENTITY</p>
+            <h2>Player profile</h2>
           </div>
-        </article>
-        <article class="insights-card glass">
-          <div class="section-heading compact"><div><p class="eyebrow">YOUR MOMENTUM</p><h2>Today's rhythm<span class="period">.</span></h2></div><span class="insight-icon">✧</span></div>
-          <div class="rhythm-chart" id="rhythm-chart" aria-label="Weekly task completion chart"></div>
-          <div class="rhythm-footer"><span><i class="chart-dot"></i> Tasks completed</span><strong id="week-completed">0 this week</strong></div>
-          <div class="insight-tip"><span>✦</span><div><strong>Momentum tip</strong><p id="momentum-tip">Start with one small task. Consistency beats intensity.</p></div></div>
-        </article>
-      </section>
-
-      <section class="rewards-section glass" id="rewards-panel">
-        <div class="section-heading compact"><div><p class="eyebrow">LEVEL UP YOUR WORKSPACE</p><h2>Rewards & themes<span class="period">.</span></h2></div><span class="unlock-count" id="unlock-count">1 theme unlocked</span></div>
-        <div id="theme-grid" class="theme-grid"></div>
-        <div class="custom-tag-area" id="custom-tag-area" hidden><div><strong>Master's forge</strong><p>Create a custom tag for the way you work.</p></div><form id="custom-tag-form"><input id="custom-tag-input" maxlength="24" placeholder="e.g. Client Work" aria-label="New custom tag"><button class="primary-btn" type="submit">＋ Add tag</button></form></div>
-      </section>
-      <footer class="app-footer"><span>✦ QUESTLINE</span><span>Built for progress, not perfection.</span><button id="export-backup">Export backup JSON ↗</button></footer>
-    </main>
-  </div>
-
-  <dialog id="task-dialog" class="modal">
-    <form id="task-form" class="modal-card">
-      <div class="modal-heading"><div><p class="eyebrow">ADD TO YOUR MISSION BOARD</p><h2 id="task-dialog-title">Create a quest</h2></div><button type="button" class="icon-btn close-dialog" aria-label="Close">×</button></div>
-      <input type="hidden" id="task-id">
-      <label>Task title<input id="task-title" required maxlength="100" placeholder="What do you want to accomplish?"></label>
-      <label>Description<textarea id="task-description" rows="3" maxlength="500" placeholder="Add a little context..."></textarea></label>
-      <div class="form-grid"><label>Priority<select id="task-priority"><option value="medium">Medium</option><option value="critical">Critical</option><option value="low">Low</option></select></label><label>Status<select id="task-status"><option value="todo">To-Do</option><option value="progress">In Progress</option><option value="review">Review</option><option value="completed">Completed</option></select></label></div>
-      <div class="form-grid"><label>Due date<input id="task-due" type="date"></label><label>Energy demand<select id="task-energy"><option value="low">⚡ Low</option><option value="medium" selected>⚡⚡ Medium</option><option value="high">⚡⚡⚡ High</option></select></label></div>
-      <label>Tag<select id="task-tag"></select></label>
-      <label>Subtasks <span class="muted">(one per line)</span><textarea id="task-subtasks" rows="3" placeholder="Outline the first step&#10;Finish the next step"></textarea></label>
-      <div class="modal-actions"><button type="button" class="secondary-btn close-dialog">Cancel</button><button type="submit" class="primary-btn">Save quest</button></div>
-    </form>
-  </dialog>
-  <dialog id="profile-dialog" class="modal">
-    <form id="profile-form" class="modal-card small-modal"><div class="modal-heading"><div><p class="eyebrow">YOUR IDENTITY</p><h2>Player profile</h2></div><button type="button" class="icon-btn close-dialog">×</button></div><label>Display name<input id="profile-input" maxlength="40" placeholder="What should we call you?"></label><div class="modal-actions"><button type="button" class="secondary-btn close-dialog">Cancel</button><button class="primary-btn" type="submit">Save profile</button></div></form>
-  </dialog>
-  <dialog id="levelup-dialog" class="modal levelup-modal"><div class="levelup-content"><div class="levelup-symbol">✦</div><p class="eyebrow">NEW LEVEL UNLOCKED</p><h2 id="levelup-title">Level up!</h2><p id="levelup-copy">Your next chapter starts now.</p><div id="levelup-rewards" class="levelup-rewards"></div><button class="primary-btn" id="levelup-close">Let's go ✦</button></div></dialog>
-  <div id="toast-region" class="toast-region" aria-live="polite"></div>
-</body>
+          <button type="button" class="icon-btn close-dialog">×</button>
+        </div>
+        <label
+          >Display name<input
+            id="profile-input"
+            maxlength="40"
+            placeholder="What should we call you?"
+        /></label>
+        <div class="modal-actions">
+          <button type="button" class="secondary-btn close-dialog">
+            Cancel</button
+          ><button class="primary-btn" type="submit">Save profile</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="levelup-dialog" class="modal levelup-modal">
+      <div class="levelup-content">
+        <div class="levelup-symbol">✦</div>
+        <p class="eyebrow">NEW LEVEL UNLOCKED</p>
+        <h2 id="levelup-title">Level up!</h2>
+        <p id="levelup-copy">Your next chapter starts now.</p>
+        <div id="levelup-rewards" class="levelup-rewards"></div>
+        <button class="primary-btn" id="levelup-close">Let's go ✦</button>
+      </div>
+    </dialog>
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
+  </body>
 </html>
